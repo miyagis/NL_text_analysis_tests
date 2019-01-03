@@ -43,14 +43,14 @@ def clean_df(df):
 
 
 def clean_word(w):
-    # if len(w) > 4:
-    #     if w[len(w)-2:] == "en":
-    #         print(w)
-    #         w = w[:len(w)-2]
-    #         print(w)
-    #         # Verb?
-    #         # if the 2nd to last letter is a klinker then probably double it
-    #         print('-------')
+    if len(w) > 4:
+        if w[len(w)-2:] == "en":
+            print(w)
+            w = w[:len(w)-2]
+            print(w)
+            # Verb?
+            # if the 2nd to last letter is a klinker then probably double it
+            print('-------')
     return w
 
 
@@ -90,21 +90,35 @@ def calc_condi_p(df_condi_p, pos_count, neg_count):
 
 def applying_bayes_theorem(t, df, sum_pos, sum_neg):
     # get and multiply p for every word: P(t/pos)
-    t_tok = t.split()
+    df_t = pd.DataFrame(columns=["name", "review"])
+    df_t.loc[0] = ["", t]
+    df_t = clean_df(df_t)
+
     p_pos = 1
-    for tok in t_tok:
-        temp = df.loc[df['word'] == tok].index.values[0]
-        pos_val = df.at[temp, 'pos']
-        p_pos = p_pos * pos_val
-    print(p_pos)
+    p_neg = 1
+
+    for index, r in df_t.iterrows():
+        for w in r['tokenized_review']:
+            w = clean_word(w)
+            temp = df.loc[df['word'] == w].index.values
+
+            if len(temp) > 0:
+                temp = temp[0]
+                pos_val = df.at[temp, 'pos']
+                if pos_val != 0:
+                    p_pos = p_pos * pos_val
+                neg_val = df.at[temp, 'neg']
+                if neg_val != 0:
+                    p_neg = p_neg * neg_val
     # multiply by sum_pos: P(t/pos) * P(pos)
-    p_pos = p_pos * sum_pos
-    print(p_pos)
+    p_pos_times_sum = p_pos * sum_pos
+    p_neg_times_sum = p_neg * sum_neg
     # / P(t/pos) * P(pos) + P(t/neg) * P(neg)
+    noemer = (p_pos * sum_pos + p_neg * sum_neg)
+    p_pos_final = p_pos_times_sum / noemer
+    p_neg_final = p_neg_times_sum / noemer
 
-    p_neg = 0 * sum_neg
-
-    return (p_pos, p_neg)
+    return p_pos_final, p_neg_final
 
 
 def main_create_csv():
@@ -121,15 +135,19 @@ def main_create_csv():
 
 
 def main_sentiment_analysis():
-    print("x")
-    t = "De Engelse term 'Dog Days' verwijst naar de verzengende hete zomerdagen en zijn allesbehalve gerieflijk. " \
-        "Je zou kunnen stellen dat ons continent ze net achter de rug heeft. Waarom een flauw mozaïekdrama over de " \
-        "relatie tussen mens en viervoeter naar dit fenomeen is genoemd mag een raadsel zijn. Maar Dog Days van Ken " \
-        "Marino barst van de vraagtekens. Het grootste is wie valt voor deze slecht bedacht en slecht geschreven onzin"
-    # test = applying_bayes_theorem(t, df_condi_p, pos_count, neg_count)
-    # print(test)
+    t = "lopen haasten rennen kaarten huizen " \
+        "Doorgeslagen feelgoodfilm met genoeg potentie en thema's saboteert zichzelf met een slechte vertelwijze."
+    df = pd.read_csv(filepath_or_buffer='conditional_p.csv')
+    pos_count = df['pos_temp'].sum()
+    neg_count = df['neg_temp'].sum()
+    test = applying_bayes_theorem(t, df, pos_count, neg_count)
+    if test[0] > test[1]:
+        print("pos")
+    else:
+        print("neg")
 
 
 if __name__ == '__main__':
-    main_create_csv()
+    # main_create_csv()
+    main_sentiment_analysis()
 
