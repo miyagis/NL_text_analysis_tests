@@ -1,5 +1,6 @@
 from common_functions import get_bs_data, export_data_to_csv
 import re
+from time import sleep
 
 
 page_max = 1 + 21
@@ -23,10 +24,13 @@ def get_data():
             else:
                 p_split = p.split("'")
             p_split[2] = re.sub("[^0-9]", "", p_split[2])
-            p_split[2] = p_split[2][0] + "/" + p_split[2][1]
+            # p_split[2] = p_split[2][0] + "/" + p_split[2][1]
+            p_split[2] = p_split[2][0]
+            print(p_split[2])
             my_list = p_split[1], p_split[2]
             cd_data.append(my_list)
             # print(cd_data)
+        # sleep(1)
 
     export_data_to_csv(file_name="lflmagazine_recencies.csv", data=cd_data)
 
