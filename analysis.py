@@ -131,23 +131,29 @@ def main_create_csv():
     neg_count = df_condi_p['neg_temp'].sum()
     df_condi_p = calc_condi_p(df_condi_p, pos_count, neg_count)
 
-    df_condi_p.to_csv("conditional_p.csv")
+    df_condi_p.to_csv("conditional_p2.csv")
 
 
 def main_sentiment_analysis():
-    t = "lopen haasten rennen kaarten huizen " \
-        "Doorgeslagen feelgoodfilm met genoeg potentie en thema's saboteert zichzelf met een slechte vertelwijze."
-    df = pd.read_csv(filepath_or_buffer='conditional_p.csv')
-    pos_count = df['pos_temp'].sum()
-    neg_count = df['neg_temp'].sum()
-    test = applying_bayes_theorem(t, df, pos_count, neg_count)
-    if test[0] > test[1]:
-        print("pos")
-    else:
-        print("neg")
+    df_test = pd.read_csv(filepath_or_buffer='lflmagazine_recencies.csv', names=["review", "grade"], sep=";")
+    analysis_comparison = []
+    for index, r in df_test.iterrows():
+        df = pd.read_csv(filepath_or_buffer='conditional_p.csv')
+        pos_count = df['pos_temp'].sum()
+        neg_count = df['neg_temp'].sum()
+        test = applying_bayes_theorem(r["review"], df, pos_count, neg_count)
+
+        if test[0] > test[1]:
+            my_list = ("pos", r["grade"])
+        else:
+            my_list = ("neg", r["grade"])
+
+        analysis_comparison.append(my_list)
+    df_o = pd.DataFrame(analysis_comparison)
+    df_o.to_csv("analysis_test.csv")
 
 
 if __name__ == '__main__':
-    # main_create_csv()
-    main_sentiment_analysis()
+    main_create_csv()
+    # main_sentiment_analysis()
 
