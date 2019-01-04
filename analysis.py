@@ -14,6 +14,7 @@
 
 import pandas as pd
 import nltk
+import os.path
 
 
 stopwords = ["de", "een", "het", "en", "van", "aan", "deze", "dit", "die", "er", "als", "met", "in", "zijn", "is",
@@ -23,7 +24,11 @@ klinkers = ['a', 'e', 'u', 'o', 'i']
 
 def clean_df(df):
     # Drop useles column
-    df = df.drop(columns=["name"])
+    accepted_columns = ["review", "grade"]
+    all_columns = list(df)
+    for col in all_columns:
+        if col not in accepted_columns:
+            df = df.drop(columns=[col])
 
     # Pre-procesing
     # all lowercase
@@ -43,20 +48,22 @@ def clean_df(df):
 
 
 def clean_word(w):
-    if len(w) > 4:
-        if w[len(w)-2:] == "en":
-            print(w)
-            w = w[:len(w)-2]
-            print(w)
-            # Verb?
-            # if the 2nd to last letter is a klinker then probably double it
-            print('-------')
+    # if len(w) > 4:
+    #     if w[len(w)-2:] == "en":
+    #         print(w)
+    #         w = w[:len(w)-2]
+    #         print(w)
+    #         # Verb?
+    #         # if the 2nd to last letter is a klinker then probably double it
+    #         print('-------')
     return w
 
 
-def create_df_condi_p(df):
-    # create df to store conditional probability
-    df_condi_p = pd.DataFrame(columns=("word", "pos_temp", "neg_temp"))
+def update_df_condi_p(df, df_condi_p):
+    if len(df_condi_p) == 0:
+        first_addition = True
+    else:
+        first_addition = False
 
     for index, r in df.iterrows():
         for w in r['tokenized_review']:
@@ -64,8 +71,12 @@ def create_df_condi_p(df):
 
             # check if word is in df -> If not; add it
             if w not in df_condi_p['word'].unique():
-                row_df_condi = df_condi_p['word'].count() + 1
-                df_condi_p.loc[row_df_condi] = [w, 0, 0]
+                if first_addition:
+                    row_df_condi = df_condi_p['word'].count() + 1
+                else:
+                    row_df_condi = df_condi_p['word'].count()
+
+                df_condi_p.loc[row_df_condi] = [w, 0, 0, 0, 0]
             else:
                 row_df_condi = df_condi_p.loc[df_condi_p['word'] == w].index.values[0]
 
@@ -76,7 +87,7 @@ def create_df_condi_p(df):
             elif r['grade'] <= 2.5:
                 old_count = df_condi_p.at[row_df_condi, 'neg_temp']
                 df_condi_p.set_value(row_df_condi, "neg_temp", old_count+1)
-
+            # print(df_condi_p.tail())
     return df_condi_p
 
 
@@ -121,11 +132,19 @@ def applying_bayes_theorem(t, df, sum_pos, sum_neg):
     return p_pos_final, p_neg_final
 
 
-def main_create_csv():
-    df = pd.read_csv(filepath_or_buffer='film_recencies.csv', sep=";", names=["grade", "review", "name"])
+def main_conditional_p():
+    # df_raw = pd.read_csv(filepath_or_buffer='film_recencies.csv', sep=";", names=["grade", "review", "name"])
+    df_raw = pd.read_csv(filepath_or_buffer='lflmagazine_recencies.csv', sep=";", names=["review", "grade"])
     # df = df.head()
-    df = clean_df(df)
-    df_condi_p = create_df_condi_p(df)
+    df_raw = clean_df(df_raw)
+    file_exists = os.path.isfile("conditional_p.csv")
+    if file_exists:
+        df_condi_p = pd.read_csv(filepath_or_buffer='conditional_p.csv',
+                                 usecols=[1, 2, 3, 4, 5])
+    else:
+        df_condi_p = pd.DataFrame(columns=("word", "pos_temp", "neg_temp", "pos", "neg"))
+
+    df_condi_p = update_df_condi_p(df_raw, df_condi_p)
 
     pos_count = df_condi_p['pos_temp'].sum()
     neg_count = df_condi_p['neg_temp'].sum()
@@ -154,6 +173,9 @@ def main_sentiment_analysis():
 
 
 if __name__ == '__main__':
-    main_create_csv()
+    main_conditional_p()
     # main_sentiment_analysis()
 
+# to do:
+# - function to incl. new data to the conditional_p.csv
+# - word adj function update
